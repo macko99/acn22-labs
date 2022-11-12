@@ -21,6 +21,7 @@ from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import arp
+from ryu.lib.packet import ether_types
 
 class LearningSwitch(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -68,6 +69,42 @@ class LearningSwitch(app_manager.RyuApp):
         dpid = datapath.id
 
         # TODO: learning switch implementation
+        in_port = msg.match['in_port']
+
+        pkt = packet.Packet(msg.data)
+        eth = pkt.get_protocol(ethernet.ethernet)
+        if eth.ethertype == ether_types.ETH_TYPE_LLDP:
+            # ignore lldp packet
+            self.logger.info("LLDP!! packet -> return")
+            return
+
+        dst = eth.dst
+        src = eth.src
+
+        #switch id - seperate table for each switch
+        dpid = datapath.id
+        self.mac_to_port.setdefault(dpid, {})
+
+        proto_string = "ARP" if int(eth.ethertype) == 2054 else "IP"
+        self.logger.info("packet in switch id:%s src mac: %s dst mac: %s in port: %s proto:%s", dpid, src, dst, in_port, proto_string)
+
+        # learn a mac address to avoid FLOOD next time.
+        if eth.ethertype == ether_types.ETH_TYPE_IP:
+            self.mac_to_port[dpid][src] = in_port
+
+        if dst in self.mac_to_port[dpid]:
+            out_port = self.mac_to_port[dpid][dst]
+            self.logger.info("switch id: %s dst mac:%s in table, out port:%s", dpid, dst, out_port)
+        else:
+            out_port = ofproto.OFPP_FLOOD
+            self.logger.info("switch id: %s dst mac:%s NOT in table, flood", dpid, dst)
+
+        actions = [parser.OFPActionOutput(out_port)]
+
+        # install a flow to avoid packet_in next time
+        if out_port != ofproto.OFPP_FLOOD and eth.ethertype == ether_types.ETH_TYPE_IP:
+            match = parser.OFPMatch(in_port=in_port, eth_dst=dst)
+            self.add_flow(datapath, 1, match, actions)
 
 
         # Construct packet_out message and send it

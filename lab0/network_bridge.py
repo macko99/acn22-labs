@@ -27,6 +27,19 @@ class BridgeTopo(Topo):
         Topo.__init__(self)
 
         # TODO: add nodes and links to construct the topology
+        h1 = self.addHost('h1', ip='10.0.0.1')
+        h2 = self.addHost('h2', ip='10.0.0.2')
+        h3 = self.addHost('h3', ip='10.0.0.3')
+        h4 = self.addHost('h4', ip='10.0.0.4')
+
+        s1 = self.addSwitch('s1')
+        s2 = self.addSwitch('s2')
+
+        e1 = self.addLink(h1, s1, bw=15, delay='10ms')
+        e2 = self.addLink(h2, s1, bw=15, delay='10ms')
+        e3 = self.addLink(h3, s2, bw=15, delay='10ms')
+        e4 = self.addLink(h4, s2, bw=15, delay='10ms')
+        e5 = self.addLink(s1, s2, bw=20, delay='45ms')
 
 
 topos = {'bridge': (lambda: BridgeTopo())}
