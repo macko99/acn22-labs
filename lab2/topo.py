@@ -15,7 +15,6 @@
 
 import sys
 import random
-import queue
 import matplotlib.pyplot as plt
 import math
 
@@ -151,8 +150,8 @@ class Jellyfish:
 		return False
 
 	def plot(self, num_ports, save, mode):
-
-		fig, ax = plt.subplots(figsize=(num_ports*5, num_ports*5))
+		scale = 5 if num_ports > 6 else 3
+		fig, ax = plt.subplots(figsize=(num_ports*scale, num_ports*scale))
 		
 		r = 0.45
 		server_ans = []
@@ -203,7 +202,7 @@ class Jellyfish:
 					ploted_edges.append(edge)
 		
 		if save:
-			plt.savefig('fig_jellyfish.png')
+			plt.savefig('fig_jellyfish_k' + str(num_ports) + '.png')
 		else:
 			plt.show()
 		plt.clf()
@@ -272,7 +271,8 @@ class Fattree:
 
 
 	def plot(self, num_ports, save):
-		fig, ax = plt.subplots(figsize=(num_ports*5*2, num_ports*5))
+		scale = 5 if num_ports > 6 else 3
+		fig, ax = plt.subplots(figsize=(num_ports*scale*2, num_ports*scale))
 
 		server_ans = []
 		x_base = x_scale = 1/(len(self.servers)+1)
@@ -347,42 +347,10 @@ class Fattree:
 					ploted_edges.append(edge)
 
 		if save:
-			plt.savefig('fig_fattree.png')
+			plt.savefig('fig_fattree_k' + str(num_ports) + '.png')
 		else:
 			plt.show()
 		plt.clf()
 		fig.clf()
 		
-
-
-
-if __name__ == "__main__":
-	k = 4
-
-	print('k (num od ports): ' + str(k))
-	print('____________________________________________')
-	# fattree = Fattree(k, True, True)
-	fattree = Fattree(k)
-
-	print('servers: ' + str(len(fattree.servers)) + ' switches: ' + str(len(fattree.switches)) + ' should be: ' + str(int((k**3)/4)) + ' ' + str(int(k*k*5/4)))
-
-	# for server in fattree.servers:
-	# 	print(server.type + ' ' + server.id)
-
-	# for switch in fattree.switches:
-	# 	print(switch.type + ' ' + switch.id +  ' edges: ' + str(len(switch.edges)))
-
-
-	print('____________________________________________')
-	# k = 14
-	# jellyfish = Jellyfish(int((k**3)/4), int(k*k*5/4), k, True, True, 2)
-	jellyfish = Jellyfish(int((k**3)/4), int(k*k*5/4), k)
-
-	print('servers: ' + str(len(jellyfish.servers)) + ' switches: ' + str(len(jellyfish.switches)) + ' should be: ' + str(int((k**3)/4)) + ' ' + str(int(k*k*5/4)))
-
-	# for server in jellyfish.servers:
-	# 	print(server.type + ' ' + str(server.id))
-
-	# for switch in jellyfish.switches:
-	# 	if(len(switch.edges) != k):
-	# 		print(switch.type + ' ' + str(switch.id) +  ' edges: ' + str(len(switch.edges)))
+		
