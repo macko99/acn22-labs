@@ -29,13 +29,12 @@ import matplotlib.pyplot as plt
 if __name__ == "__main__":
 
     num_ports = 4
-    num_servers = int((num_ports**3)/4)
-    num_switches = int(num_ports*num_ports*5/4)
-
+    num_servers = int((num_ports ** 3) / 4)
+    num_switches = int(num_ports * num_ports * 5 / 4)
 
     jf_topo = topo.Jellyfish(num_servers, num_switches, num_ports)
 
-    #EXAMPLE
+    # EXAMPLE
     result = topo.ksp_yen(jf_topo.switches + jf_topo.servers, jf_topo.servers[0], jf_topo.servers[5], 8)
     for route in result:
         print(str(route['cost']) + ': ', end='')
@@ -59,9 +58,9 @@ if __name__ == "__main__":
     # print(len(counter))
 
     # ft_server_next_hop_id_list = [server.edges[0].rnode.id for server in ft_topo.servers]
-    # ft_server_next_hop_pairs = [(a, b) for idx, a in enumerate(ft_server_next_hop_id_list) for b in ft_server_next_hop_id_list[idx + 1:]]
+    # ft_server_next_hop_pairs = \
+    #     [(a, b) for idx, a in enumerate(ft_server_next_hop_id_list) for b in ft_server_next_hop_id_list[idx + 1:]]
 
     # for pair in ft_server_next_hop_pairs:
     #     distance = distance_ft[pair] + 2
     #     ft_distribution[distance] += 1
-

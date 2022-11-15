@@ -7,7 +7,9 @@ This is the repository holding the code skeleton for the lab assignments for Adv
 ## How to run lab2:
 
 `python .\plot_topos.py`
+(approx run time on M1 mac - 20 sec)
 
 `python .\reproduce_1c.py`
+(mean run time on M1 mac - 2 min 40 sec)
 
 `python .\reproduce_9.py` <- still under development
