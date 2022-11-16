@@ -16,112 +16,51 @@
 import topo
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 
+# # Setup for Jellyfish
+# num_servers = 686
+# num_switches = 245
+# num_ports = 14
 
-count_ksp = {}
-count_ecmp8 = {}
-count_ecmp64 = {}
+# jf_topo = topo.Jellyfish(num_servers, num_switches, num_ports)
 
-def handleKSP(paths, ksp_value):
-    for path in paths[:ksp_value]:
-        #links = [(min(x.id, y.id), max(x.id, y.id)) for x, y in zip(path ,path[1::])]
-        links = [(x.id, y.id) for x, y in zip(path ,path[1::])]
-        for link in links:
-            try:
-                count_ksp[link] += 1
-            except KeyError:
-                count_ksp[(link[1], link[0])] += 1
-
-
-def handleECMP8way(paths):
-    len_shortest = len(paths[0])
-    ecmp_val = 8
-    for path in paths:
-        if len(path) == len_shortest:
-            if ecmp_val >= 0:
-                #links = [(min(x.id, y.id), max(x.id, y.id)) for x, y in zip(path ,path[1::])]
-                links = [(x.id, y.id) for x, y in zip(path ,path[1::])]
-                for link in links:
-                    try:
-                        count_ecmp8[link] += 1
-                    except KeyError:
-                        count_ecmp8[(link[1], link[0])] += 1
-                    ecmp_val -= 1
-
-
-def handleECMP64way(paths):
-    len_shortest = len(paths[0])
-    ecmp_val = 64
-    for path in paths:
-        if len(path) == len_shortest:
-            if ecmp_val >= 0:
-                #links = [(min(x.id, y.id), max(x.id, y.id)) for x, y in zip(path ,path[1::])]
-                links = [(x.id, y.id) for x, y in zip(path ,path[1::])]
-                for link in links:
-                    try:
-                        count_ecmp64[link] += 1
-                    except KeyError:
-                        count_ecmp64[(link[1], link[0])] += 1
-                    ecmp_val -= 1
-
-
-
-def init_counters(links):
-    for link in links:
-        count_ksp[link] = 0
-        count_ecmp8[link] = 0
-        count_ecmp64[link] = 0
-
+# TODO: code for reproducing Figure 9 in the jellyfish paper
 
 if __name__ == "__main__":
-
-    start = time.time()
 
     num_ports = 4
     num_servers = int((num_ports ** 3) / 4)
     num_switches = int(num_ports * num_ports * 5 / 4)
 
     jf_topo = topo.Jellyfish(num_servers, num_switches, num_ports)
-    switches_pairs = [(a, b) for idx, a in enumerate(jf_topo.switches) for b in jf_topo.switches[idx + 1:]]
 
-    edges = set()
+    # EXAMPLE
+    result = topo.ksp_yen(jf_topo.switches + jf_topo.servers, jf_topo.servers[0], jf_topo.servers[5], 8)
+    for route in result:
+        print(str(route['cost']) + ': ', end='')
+        for node in route['path']:
+            print(str(node.type) + str(node.id) + ' -> ', end='')
+        print('')
 
-    for switch in jf_topo.switches:
-        for edge in switch.edges:
-            if edge.lnode.id == edge.rnode.id:
-                continue
-            edges.add((edge.lnode.id, edge.rnode.id))
-    
-    init_counters(edges)
-    print(count_ksp)
-    
-    for pair in switches_pairs:
-        print("Pair" + str(pair[0].id) + "/" + str(pair[1].id))
-        result = topo.ksp_yen(jf_topo.switches + jf_topo.servers, pair[0], pair[1], 8)
-        paths = [route["path"] for route in result]
-        for route in result:
-            print(str(route['cost']) + ': ', end='')
-            for node in route['path']:
-                print(str(node.type) + str(node.id) + ' -> ', end='')
-            print('')
-        handleKSP(paths, 8)
-        handleECMP8way(paths)
-        handleECMP64way(paths)
+    # links = {}
+    # counter = []
+    # jf_server_ids = [server.id for server in jf_topo.servers]
+    # jf_server_id_pairs = [(a, b) for idx, a in enumerate(jf_server_ids) for b in jf_server_ids[idx + 1:]]
+    # jf_server_links = [(a, b) for idx, a in enumerate(jf_topo.servers) for b in jf_topo.servers[idx + 1:]]
 
+    # for idx, pair in enumerate(jf_server_links):
+    #     part_result = topo.ksp_yen(jf_topo.switches + jf_topo.servers, pair[0], pair[1], 8)
+    #     links[jf_server_id_pairs[idx]] = [x['cost'] for x in part_result]
+    #     counter.append(len(links[jf_server_id_pairs[idx]]))
 
-    #add plot for reproducing figure 9
-    plt.ylabel('# Distinct Paths Link is on')
-    plt.xlabel('Rank of Link')
+    # print(links)
+    # print(counter)
+    # print(len(counter))
 
-    plt.plot(sorted(count_ecmp64.values()), color='red', label='64-way ECMP')
-    plt.plot(sorted(count_ksp.values()), color='blue', label="8 Shortest Paths")
-    plt.plot(sorted(count_ecmp8.values()), color='green', label='8-way ECMP')
+    # ft_server_next_hop_id_list = [server.edges[0].rnode.id for server in ft_topo.servers]
+    # ft_server_next_hop_pairs = \
+    #     [(a, b) for idx, a in enumerate(ft_server_next_hop_id_list) for b in ft_server_next_hop_id_list[idx + 1:]]
 
-
-    plt.legend()
-    #plt.show()
-    plt.savefig("fig_9.png")
-    plt.close()
-
-    print(time.time() - start)
+    # for pair in ft_server_next_hop_pairs:
+    #     distance = distance_ft[pair] + 2
+    #     ft_distribution[distance] += 1
