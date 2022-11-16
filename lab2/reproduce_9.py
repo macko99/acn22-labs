@@ -25,9 +25,13 @@ count_ecmp64 = {}
 
 def handleKSP(paths, ksp_value):
     for path in paths[:ksp_value]:
-        links = [(min(x.id, y.id), max(x.id, y.id)) for x, y in zip(path ,path[1::])]
+        #links = [(min(x.id, y.id), max(x.id, y.id)) for x, y in zip(path ,path[1::])]
+        links = [(x.id, y.id) for x, y in zip(path ,path[1::])]
         for link in links:
-            count_ksp[link] += 1
+            try:
+                count_ksp[link] += 1
+            except KeyError:
+                count_ksp[(link[1], link[0])] += 1
 
 
 def handleECMP8way(paths):
@@ -36,10 +40,15 @@ def handleECMP8way(paths):
     for path in paths:
         if len(path) == len_shortest:
             if ecmp_val >= 0:
-                links = [(min(x.id, y.id), max(x.id, y.id)) for x, y in zip(path ,path[1::])]
+                #links = [(min(x.id, y.id), max(x.id, y.id)) for x, y in zip(path ,path[1::])]
+                links = [(x.id, y.id) for x, y in zip(path ,path[1::])]
                 for link in links:
-                    count_ecmp8[link] += 1
+                    try:
+                        count_ecmp8[link] += 1
+                    except KeyError:
+                        count_ecmp8[(link[1], link[0])] += 1
                     ecmp_val -= 1
+
 
 def handleECMP64way(paths):
     len_shortest = len(paths[0])
@@ -47,9 +56,13 @@ def handleECMP64way(paths):
     for path in paths:
         if len(path) == len_shortest:
             if ecmp_val >= 0:
-                links = [(min(x.id, y.id), max(x.id, y.id)) for x, y in zip(path ,path[1::])]
+                #links = [(min(x.id, y.id), max(x.id, y.id)) for x, y in zip(path ,path[1::])]
+                links = [(x.id, y.id) for x, y in zip(path ,path[1::])]
                 for link in links:
-                    count_ecmp64[link] += 1
+                    try:
+                        count_ecmp64[link] += 1
+                    except KeyError:
+                        count_ecmp64[(link[1], link[0])] += 1
                     ecmp_val -= 1
 
 
@@ -70,23 +83,28 @@ if __name__ == "__main__":
     num_switches = int(num_ports * num_ports * 5 / 4)
 
     jf_topo = topo.Jellyfish(num_servers, num_switches, num_ports)
-    jf_switches_links_ids = [(a.id, b.id) for idx, a in enumerate(jf_topo.switches) for b in jf_topo.switches[idx + 1:]]
-    jf_switches_links_nodes = [(a, b) for idx, a in enumerate(jf_topo.switches) for b in jf_topo.switches[idx + 1:]]
-    init_counters(jf_switches_links_ids)
+    switches_pairs = [(a, b) for idx, a in enumerate(jf_topo.switches) for b in jf_topo.switches[idx + 1:]]
 
+    edges = set()
 
-    result = topo.ksp_yen(jf_topo.switches + jf_topo.servers, jf_topo.switches[0], jf_topo.switches[1], 8)
-    for route in result:
-        print(str(route['cost']) + ': ', end='')
-        for node in route['path']:
-            print(str(node.type) + str(node.id) + ' -> ', end='')
-        print('')
-
+    for switch in jf_topo.switches:
+        for edge in switch.edges:
+            if edge.lnode.id == edge.rnode.id:
+                continue
+            edges.add((edge.lnode.id, edge.rnode.id))
     
-    for idx, pair in enumerate(jf_switches_links_nodes):
+    init_counters(edges)
+    print(count_ksp)
+    
+    for pair in switches_pairs:
         print("Pair" + str(pair[0].id) + "/" + str(pair[1].id))
         result = topo.ksp_yen(jf_topo.switches + jf_topo.servers, pair[0], pair[1], 8)
         paths = [route["path"] for route in result]
+        for route in result:
+            print(str(route['cost']) + ': ', end='')
+            for node in route['path']:
+                print(str(node.type) + str(node.id) + ' -> ', end='')
+            print('')
         handleKSP(paths, 8)
         handleECMP8way(paths)
         handleECMP64way(paths)
