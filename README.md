@@ -13,3 +13,8 @@ This is the repository holding the code skeleton for the lab assignments for Adv
 (mean run time on M1 mac - 2 min 40 sec)
 
 `python .\reproduce_9.py` (uses multiprocessing to speed up the process of generating the figure 9, by default it uses all available cores of your CPU)
+
+
+## How to run lab3:
+
+sudo ryu-manager ./sp_routing.py --observe-links

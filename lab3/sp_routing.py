@@ -38,7 +38,9 @@ class SPRouter(app_manager.RyuApp):
 
     def __init__(self, *args, **kwargs):
         super(SPRouter, self).__init__(*args, **kwargs)
-        self.topo_net = topo.Fattree(4)
+        #self.topo_net = topo.Fattree(4) why do we need that here?
+        self.topo_switches = []
+        self.topo_links = []
 
 
     # Topology discovery
@@ -47,7 +49,14 @@ class SPRouter(app_manager.RyuApp):
 
         # Switches and links in the network
         switches = get_switch(self, None)
+        self.topo_switches = [switch.dp.id for switch in switches]
+        print("Switches: ", self.topo_switches)
         links = get_link(self, None)
+        #getting dp id from source, dp id from destination, port number from source
+        self.topo_links =[(link.src.dpid,link.dst.dpid,{'port':link.src.port_no}) for link in links]
+        print("Links: ", self.topo_links)
+        # self.graph.add_nodes_from(switches)
+        # self.graph.add_edges_from(links)
 
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
