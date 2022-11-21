@@ -13,7 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 
 from ryu.base import app_manager
 from ryu.controller import mac_to_port
@@ -33,8 +33,8 @@ from ryu.app.wsgi import ControllerBase
 from ryu.lib.packet import ethernet, ether_types
 import networkx as nx
 
-class SPRouter(app_manager.RyuApp):
 
+class SPRouter(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
@@ -44,25 +44,24 @@ class SPRouter(app_manager.RyuApp):
         self.ip_to_next_hop_switch = {}
         self.ip_to_port = {}
         self.topo_raw_links = []
-        self.net=nx.DiGraph()
+        self.net = nx.DiGraph()
 
     # Topology discovery
     @set_ev_cls(event.EventSwitchEnter)
     def get_topology_data(self, ev):
 
-        switch_list = get_switch(self, None)   
+        switch_list = get_switch(self, None)
 
-        switches=[switch.dp.id for switch in switch_list]
+        switches = [switch.dp.id for switch in switch_list]
         self.net.add_nodes_from(switches)
 
         self.topo_raw_links = links_list = get_link(self, None)
 
-        links=[(link.src.dpid,link.dst.dpid,{'port':link.src.port_no}) for link in links_list]
+        links = [(link.src.dpid, link.dst.dpid, {'port': link.src.port_no}) for link in links_list]
         self.net.add_edges_from(links)
 
-        links=[(link.dst.dpid,link.src.dpid,{'port':link.dst.port_no}) for link in links_list]
+        links = [(link.dst.dpid, link.src.dpid, {'port': link.dst.port_no}) for link in links_list]
         self.net.add_edges_from(links)
-
 
         for node_s in self.net:
             for node_e in self.net:
@@ -72,7 +71,6 @@ class SPRouter(app_manager.RyuApp):
                         self.shortest_paths[str(node_s)][str(node_e)] = nx.dijkstra_path(self.net, node_s, node_e)
                     except:
                         self.logger.info('  _dijsktra warning')
-
 
     def route(self, ev, src_ip, dst_ip):
         msg = ev.msg
@@ -86,15 +84,14 @@ class SPRouter(app_manager.RyuApp):
 
         eth = pkt.get_protocol(ethernet.ethernet)
         dst = eth.dst
-        
-        link_port = {link.dst.dpid : link.src.port_no for link in self.topo_raw_links if link.src.dpid == dpid}
-    
+
+        link_port = {link.dst.dpid: link.src.port_no for link in self.topo_raw_links if link.src.dpid == dpid}
+
         src_sw = str(self.ip_to_next_hop_switch[src_ip])
         dst_sw = str(self.ip_to_next_hop_switch[dst_ip])
 
-
         if src_sw == dst_sw:
-            #next hop is host, we are the last switch on path
+            # next hop is host, we are the last switch on path
             if dst_ip in self.ip_to_port[dpid]:
                 out_port = self.ip_to_port[dpid][dst_ip]
                 actions = [parser.OFPActionOutput(out_port)]
@@ -104,16 +101,16 @@ class SPRouter(app_manager.RyuApp):
                     match = parser.OFPMatch(in_port=in_port, eth_dst=dst)
                     self.add_flow(datapath, 1, match, actions)
 
-                            # Construct packet_out message and send it
+                    # Construct packet_out message and send it
                 out = parser.OFPPacketOut(datapath=datapath,
-                                in_port=in_port, 
-                                actions=actions, 
-                                buffer_id=datapath.ofproto.OFP_NO_BUFFER,
-                                data=msg.data)
+                                          in_port=in_port,
+                                          actions=actions,
+                                          buffer_id=datapath.ofproto.OFP_NO_BUFFER,
+                                          data=msg.data)
                 datapath.send_msg(out)
                 return
             else:
-                out_port = ofproto.OFPP_FLOOD
+                # out_port = ofproto.OFPP_FLOOD
                 self.logger.info('  _CANNOT FIND HOST -> %s' % dst_ip)
                 return
 
@@ -121,9 +118,9 @@ class SPRouter(app_manager.RyuApp):
 
         for i, switch in enumerate(path):
             if switch == dpid:
-                if i+1 < len(path):
-                    #next hop is another switch - lets go there
-                    next_hop = path[i+1] #dpid of next switch
+                if i + 1 < len(path):
+                    # next hop is another switch - lets go there
+                    next_hop = path[i + 1]  # dpid of next switch
                     out_port = link_port[next_hop]
 
                     actions = [parser.OFPActionOutput(out_port)]
@@ -135,14 +132,14 @@ class SPRouter(app_manager.RyuApp):
 
                     # Construct packet_out message and send it
                     out = parser.OFPPacketOut(datapath=datapath,
-                                in_port=in_port, 
-                                actions=actions, 
-                                buffer_id=datapath.ofproto.OFP_NO_BUFFER,
-                                data=msg.data)
+                                              in_port=in_port,
+                                              actions=actions,
+                                              buffer_id=datapath.ofproto.OFP_NO_BUFFER,
+                                              data=msg.data)
                     datapath.send_msg(out)
                     return
                 else:
-                    #next hop is host, we are the last switch on path
+                    # next hop is host, we are the last switch on path
                     if dst_ip in self.ip_to_port[dpid]:
                         out_port = self.ip_to_port[dpid][dst_ip]
                         actions = [parser.OFPActionOutput(out_port)]
@@ -154,16 +151,15 @@ class SPRouter(app_manager.RyuApp):
 
                         # Construct packet_out message and send it
                         out = parser.OFPPacketOut(datapath=datapath,
-                                in_port=in_port, 
-                                actions=actions, 
-                                buffer_id=datapath.ofproto.OFP_NO_BUFFER,
-                                data=msg.data)
+                                                  in_port=in_port,
+                                                  actions=actions,
+                                                  buffer_id=datapath.ofproto.OFP_NO_BUFFER,
+                                                  data=msg.data)
                         datapath.send_msg(out)
                         return
                     else:
-                        out_port = ofproto.OFPP_FLOOD
+                        # out_port = ofproto.OFPP_FLOOD
                         self.logger.info('  _CANNOT FIND HOST -> %s' % dst_ip)
-
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -177,7 +173,6 @@ class SPRouter(app_manager.RyuApp):
                                           ofproto.OFPCML_NO_BUFFER)]
         self.add_flow(datapath, 0, match, actions)
 
-
     # Add a flow entry to the flow-table
     def add_flow(self, datapath, priority, match, actions):
         ofproto = datapath.ofproto
@@ -188,7 +183,6 @@ class SPRouter(app_manager.RyuApp):
         mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
                                 match=match, instructions=inst)
         datapath.send_msg(mod)
-
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
@@ -202,13 +196,10 @@ class SPRouter(app_manager.RyuApp):
         pkt = packet.Packet(msg.data)
 
         eth = pkt.get_protocol(ethernet.ethernet)
-        src = eth.src
-        dst = eth.dst
-        
+
         self.ip_to_port.setdefault(dpid, {})
 
         if eth.ethertype == ether_types.ETH_TYPE_IP:
-
             ip4_pkt = pkt.get_protocol(ipv4.ipv4)
             src_ip = ip4_pkt.src
             dst_ip = ip4_pkt.dst
@@ -223,7 +214,6 @@ class SPRouter(app_manager.RyuApp):
             # self.logger.info('  ------')
 
             self.route(ev, src_ip, dst_ip)
-
 
         if eth.ethertype == ether_types.ETH_TYPE_ARP:
 
@@ -249,11 +239,10 @@ class SPRouter(app_manager.RyuApp):
                 actions = [parser.OFPActionOutput(ofproto.OFPP_FLOOD)]
                 # Construct packet_out message and send it
                 out = parser.OFPPacketOut(datapath=datapath,
-                                  in_port=in_port, 
-                                  actions=actions, 
-                                  buffer_id=datapath.ofproto.OFP_NO_BUFFER,
-                                  data=msg.data)
+                                          in_port=in_port,
+                                          actions=actions,
+                                          buffer_id=datapath.ofproto.OFP_NO_BUFFER,
+                                          data=msg.data)
                 datapath.send_msg(out)
             else:
                 self.route(ev, src_ip, dst_ip)
-
