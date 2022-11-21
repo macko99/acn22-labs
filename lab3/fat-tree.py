@@ -36,69 +36,73 @@ class FattreeNet(Topo):
     Create a fat-tree network in Mininet
     """
 
-    def __init__(self, ft_topo):
+    def __init__(self, topo):
         
         Topo.__init__(self)
 
         # TODO: please complete the network generation logic here
-        self.servers = ft_topo.servers
-        self.num_ports = ft_topo.num_ports
-        self.core_switches = [switch for switch in ft_topo.switches if switch.type == 'c_sw']
-        self.pod_switches = [switch for switch in ft_topo.switches if switch.type == 'p_sw']
-        modulo_values = [n for n in range(int(self.num_ports / 2))]
-        self.lower_pod_switches = [switch for idx, switch in enumerate(self.pod_switches) if
-                              idx % self.num_ports in modulo_values]
-        self.upper_pod_switches = [switch for switch in self.pod_switches if switch not in self.lower_pod_switches]
-        self.generate()
+        net_servers = []
+        net_core_switches = []
+        net_lower_pod_switches = []
+        net_upper_pod_switches = []
 
-    def generate(self):
-        core_switches = []
-        upper_switches = []
-        lower_switches = []
-        servers =  []
+        core_switches = [switch for switch in topo.switches if switch.type == 'c_sw']
+        pod_switches = [switch for switch in topo.switches if switch.type == 'p_sw']
+        modulo_values = [n for n in range(int(topo.num_ports / 2))]
+        lower_pod_switches = [switch for idx, switch in enumerate(pod_switches) if
+                              idx % topo.num_ports in modulo_values]
+        upper_pod_switches = [switch for switch in pod_switches if switch not in lower_pod_switches]
 
+        dpid_maker = 1
         #adding switches and servers to mininet
-        for i, core_switch in enumerate(self.core_switches):
-            core_switches.append(self.addSwitch("c_sw{}".format(i), ip=core_switch.id))
+        for i, core_switch in enumerate(core_switches):
+            net_core_switches.append(self.addSwitch("coreSw{}".format(i), dpid=str(dpid_maker)))
+            dpid_maker = dpid_maker + 1
 
-        for i, upper_switch in enumerate(self.upper_pod_switches):
-            upper_switches.append(self.addSwitch("u_sw{}".format(i), ip=upper_switch.id))
+        for i, upper_switch in enumerate(upper_pod_switches):
+            net_upper_pod_switches.append(self.addSwitch("upperSw{}".format(i), dpid=str(dpid_maker)))
+            dpid_maker = dpid_maker + 1
                 
-        for i, lower_switch in enumerate(self.lower_pod_switches):
-            lower_switches.append(self.addSwitch("l_sw{}".format(i), ip=lower_switch.id))
+        for i, lower_switch in enumerate(lower_pod_switches):
+            net_lower_pod_switches.append(self.addSwitch("lowerSw{}".format(i), dpid=str(dpid_maker)))
+            dpid_maker = dpid_maker + 1
 
-        for i, server in enumerate(self.servers):
-            servers.append(self.addHost("s{}".format(i), ip=server.id))
+        for i, server in enumerate(topo.servers):
+            net_servers.append(self.addHost("host{}".format(i), ip=server.id))
 
 
         linked_edges = []
         #creating links between core layer and upper layer
-        for core_switch in self.core_switches:
+        for core_switch in core_switches:
             for edge in core_switch.edges:
                 pod_switch = edge.rnode
-                core_switch_idx = self.core_switches.index(core_switch)
-                pod_switch_idx = self.upper_pod_switches.index(pod_switch)
-                self.addLink(core_switches[core_switch_idx], upper_switches[pod_switch_idx], bw=15, delay='5ms')
+                core_switch_idx = core_switches.index(core_switch)
+                pod_switch_idx = upper_pod_switches.index(pod_switch)
+                self.addLink(net_core_switches[core_switch_idx], 
+                                      net_upper_pod_switches[pod_switch_idx], 
+                                      bw=15, delay='5ms')
                 linked_edges.append(edge)
         
         #creating links upper layer and lower layer
-        for upper_switch in self.upper_pod_switches:
+        for upper_switch in upper_pod_switches:
             for edge in upper_switch.edges:
                 if edge not in linked_edges:
                     lower_switch = edge.lnode
-                    upper_switch_idx = self.upper_pod_switches.index(upper_switch)
-                    lower_switch_idx = self.lower_pod_switches.index(lower_switch)
-                    self.addLink(upper_switches[upper_switch_idx], lower_switches[lower_switch_idx], bw=15, delay='5ms')
-                    linked_edges.append(edge)
+                    upper_switch_idx = upper_pod_switches.index(upper_switch)
+                    lower_switch_idx = lower_pod_switches.index(lower_switch)
+                    self.addLink(net_upper_pod_switches[upper_switch_idx], 
+                                          net_lower_pod_switches[lower_switch_idx], 
+                                          bw=15, delay='5ms')
 
         #creating links between lower layer and servers
-        for server in self.servers:
+        for server in topo.servers:
             for edge in server.edges:
                 switch = edge.rnode
-                server_idx = self.servers.index(server)
-                switch_idx = self.lower_pod_switches.index(switch)
-                self.addLink(lower_switches[switch_idx], servers[server_idx], bw=15, delay='5ms')
-                linked_edges.append(edge)
+                server_idx = topo.servers.index(server)
+                switch_idx = lower_pod_switches.index(switch)
+                self.addLink(net_lower_pod_switches[switch_idx], 
+                                      net_servers[server_idx], 
+                                      bw=15, delay='5ms')
 
 
 def make_mininet_instance(graph_topo):
