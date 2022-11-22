@@ -54,19 +54,15 @@ class FattreeNet(Topo):
                               idx % topo.num_ports in modulo_values]
         upper_pod_switches = [switch for switch in pod_switches if switch not in lower_pod_switches]
 
-        dpid_maker = 1
         # adding switches and servers to mininet
-        for i, core_switch in enumerate(core_switches):
-            net_core_switches.append(self.addSwitch("coreSw{}".format(i), dpid=str(dpid_maker)))
-            dpid_maker = dpid_maker + 1
+        for core_switch in core_switches:
+            net_core_switches.append(self.addSwitch(core_switch.dpid))
 
-        for i, upper_switch in enumerate(upper_pod_switches):
-            net_upper_pod_switches.append(self.addSwitch("upperSw{}".format(i), dpid=str(dpid_maker)))
-            dpid_maker = dpid_maker + 1
+        for upper_switch in upper_pod_switches:
+            net_upper_pod_switches.append(self.addSwitch(upper_switch.dpid))
 
-        for i, lower_switch in enumerate(lower_pod_switches):
-            net_lower_pod_switches.append(self.addSwitch("lowerSw{}".format(i), dpid=str(dpid_maker)))
-            dpid_maker = dpid_maker + 1
+        for lower_switch in lower_pod_switches:
+            net_lower_pod_switches.append(self.addSwitch(lower_switch.dpid))
 
         for i, server in enumerate(topo.servers):
             net_servers.append(self.addHost("host{}".format(i), ip=server.id))

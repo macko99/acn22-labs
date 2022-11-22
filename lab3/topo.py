@@ -38,9 +38,10 @@ class Edge:
 # region Node
 # Class for a node in the graph
 class Node:
-    def __init__(self, id, type):
+    def __init__(self, id, type, dpid=None):
         self.edges = []
         self.id = id
+        self.dpid = dpid
         self.type = type
 
     # Add an edge connected to another node
@@ -261,13 +262,15 @@ class Fattree:
 
     # function creating fattree topology
     def generate(self):
+        dpid_maker = 1
 
         # We start with core layer switches
         core_layer_switches = []
         for i in range(1, int(self.num_ports / 2 + 1)):
             for j in range(1, int(self.num_ports / 2 + 1)):
-                core_switch = Node(self.get_core_switch_id(i, j, self.num_ports), 'c_sw')
+                core_switch = Node(self.get_core_switch_id(i, j, self.num_ports), 'c_sw', 's' + str(dpid_maker))
                 core_layer_switches.append(core_switch)
+                dpid_maker = dpid_maker + 1
 
         # in each pod we separate adding lower layer switches with hosts and upper layer switches
         for pod_num in range(self.num_ports):
@@ -276,8 +279,9 @@ class Fattree:
 
             # creation of lower layer switches
             for i in range(int(self.num_ports / 2)):
-                switch = Node(self.get_pod_switch_id(pod_num, i), 'p_sw')
+                switch = Node(self.get_pod_switch_id(pod_num, i), 'p_sw', 's' + str(dpid_maker))
                 lower_layer_switches.append(switch)
+                dpid_maker = dpid_maker + 1
 
             # for each lower layer switch we create the hosts and connect them
             for i, switch in enumerate(lower_layer_switches):
@@ -288,8 +292,9 @@ class Fattree:
 
             # creating upper layer switches
             for i in range(int(self.num_ports / 2), self.num_ports):
-                switch = Node(self.get_pod_switch_id(pod_num, i), 'p_sw')
+                switch = Node(self.get_pod_switch_id(pod_num, i), 'p_sw', 's' + str(dpid_maker))
                 upper_layer_switches.append(switch)
+                dpid_maker = dpid_maker + 1
 
             # connecting upper layer switches with core layer switches
             for i in range(int((self.num_ports / 2) ** 2)):
@@ -513,6 +518,25 @@ def get_path(previous, start_node, end_node):
     # we traversed the path backwards, so reverse the list
     path.reverse()
     return path
+
+
+def get_path_dpid(previous, start_node, end_node):
+    node = end_node
+    path = []
+    while node != start_node:
+        path.append(get_dpid_from_str(node))
+        node = previous[node]
+
+    path.append(get_dpid_from_str(node))
+    # we traversed the path backwards, so reverse the list
+    path.reverse()
+    return path
+
+def get_dpid_from_str(node):
+    if node.dpid is not None:
+         return int(node.dpid[1:])
+    else:
+        return node.id
 
 
 # utility function for getting the path between two nodes, it executes the dijkstra algorithm
