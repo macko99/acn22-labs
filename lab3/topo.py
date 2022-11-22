@@ -532,9 +532,10 @@ def get_path_dpid(previous, start_node, end_node):
     path.reverse()
     return path
 
+
 def get_dpid_from_str(node):
     if node.dpid is not None:
-         return int(node.dpid[1:])
+        return int(node.dpid[1:])
     else:
         return node.id
 
