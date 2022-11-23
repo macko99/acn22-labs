@@ -30,6 +30,7 @@ from ryu.topology import event, switches
 from ryu.topology.api import get_switch, get_link
 from ryu.app.wsgi import ControllerBase
 
+from ryu.lib.packet import ethernet, ether_types
 import topo
 
 class FTRouter(app_manager.RyuApp):
@@ -39,7 +40,26 @@ class FTRouter(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(FTRouter, self).__init__(*args, **kwargs)
         self.topo_net = topo.Fattree(4)
+        self.routing_table = {}
 
+        k: int = int(self.topo_net.num_ports)
+        for pod_num in range(0, k):
+            for switch_num in range(0, k):
+                ip = "10." + str(pod_num) + "." + str(switch_num) + ".1"
+                self.routing_table.setdefault(ip, {})
+                for subnet_num in range(0, int(k/2)):
+                    self.routing_table[ip]["10." + str(pod_num) + "." + str(subnet_num) + ".0/24"] = subnet_num + 1
+                self.routing_table[ip].setdefault("0.0.0.0/0", {})
+                for host in range(2, int(k/2) + 2):
+                    self.routing_table[ip]["0.0.0.0/0"]["0.0.0." + str(host) + "/8"] = int(((host - 2 + switch_num) % int(k/2)) + int(k/2)) + 1
+        for j in range(1, int(k/2) + 1):
+            for i in range(1, int(k/2) + 1):
+                ip = "10." + str(k) + "." + str(j) + "." + str(i)
+                self.routing_table.setdefault(ip, {})
+                for dest_pod in range(0, k):
+                    self.routing_table[ip]["10." + str(dest_pod) + ".0.0/16"] = dest_pod + 1
+            
+        print(self.routing_table)
 
     # Topology discovery
     @set_ev_cls(event.EventSwitchEnter)
@@ -48,7 +68,6 @@ class FTRouter(app_manager.RyuApp):
         # Switches and links in the network
         switches = get_switch(self, None)
         links = get_link(self, None)
-
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -83,4 +102,44 @@ class FTRouter(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
 
-        # TODO: handle new packets at the controller
+        in_port = msg.match['in_port']
+        pkt = packet.Packet(msg.data)
+        eth = pkt.get_protocol(ethernet.ethernet)
+
+        if eth.ethertype == ether_types.ETH_TYPE_IP:
+            ip4_pkt = pkt.get_protocol(ipv4.ipv4)
+            src_ip = ip4_pkt.src
+            dst_ip = ip4_pkt.dst
+        elif eth.ethertype == ether_types.ETH_TYPE_ARP:
+            arp_pkt = pkt.get_protocol(arp.arp)
+            src_ip = arp_pkt.src_ip
+            dst_ip = arp_pkt.dst_ip
+        else:
+            return    
+
+        switch = next(s for s in self.topo_net.switches if (s.dpid[1:] == str(dpid)))
+
+        out_port = 0
+        for prefix, value in self.routing_table[switch.id].items(): #TODO less hardcoding, ips can be variable in string length
+            if ((switch.type == "c_sw" and dst_ip[:4] == prefix[:4]) or (switch.type == "p_sw" and dst_ip[:6] == prefix[:6])):
+                out_port = value
+        if (out_port == 0):
+            for suffix, value in self.routing_table[switch.id]["0.0.0.0/0"].items():
+                if (dst_ip[7] == suffix[6]):
+                    out_port = value
+
+        actions = [parser.OFPActionOutput(out_port)]
+
+        # install a flow to avoid packet_in next time
+        if eth.ethertype == ether_types.ETH_TYPE_IP:
+            match = parser.OFPMatch(in_port=in_port, eth_dst=dst_ip)
+            self.add_flow(datapath, 1, match, actions)
+        print("ethertype:", eth.ethertype, "switch_id:", switch.id, "switch_dpid:", switch.dpid, "out_port:", out_port)
+        # Construct packet_out message and send it
+        out = parser.OFPPacketOut(datapath=datapath,
+                                  in_port=in_port,
+                                  actions=actions,
+                                  buffer_id=datapath.ofproto.OFP_NO_BUFFER,
+                                  data=msg.data)
+        datapath.send_msg(out)
+        return
