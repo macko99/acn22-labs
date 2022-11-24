@@ -68,6 +68,28 @@ class FattreeNet(Topo):
             net_servers.append(self.addHost("host{}".format(i), ip=server.id))
 
         linked_edges = []
+        # creating links between lower layer and servers
+        for server in topo.servers:
+            for edge in server.edges:
+                switch = edge.lnode
+                server_idx = topo.servers.index(server)
+                switch_idx = lower_pod_switches.index(switch)
+                self.addLink(net_lower_pod_switches[switch_idx],
+                             net_servers[server_idx],
+                             bw=15, delay='5ms')
+                linked_edges.append(edge)
+
+        # creating links upper layer and lower layer
+        for lower_switch in lower_pod_switches:
+            for edge in lower_switch.edges:
+                if edge not in linked_edges:
+                    upper_switch = edge.lnode
+                    upper_switch_idx = upper_pod_switches.index(upper_switch)
+                    lower_switch_idx = lower_pod_switches.index(lower_switch)
+                    self.addLink(net_upper_pod_switches[upper_switch_idx],
+                                 net_lower_pod_switches[lower_switch_idx],
+                                 bw=15, delay='5ms')
+
         # creating links between core layer and upper layer
         for core_switch in core_switches:
             for edge in core_switch.edges:
@@ -77,29 +99,7 @@ class FattreeNet(Topo):
                 self.addLink(net_core_switches[core_switch_idx],
                              net_upper_pod_switches[pod_switch_idx],
                              bw=15, delay='5ms')
-                linked_edges.append(edge)
-
-        # creating links upper layer and lower layer
-        for upper_switch in upper_pod_switches:
-            for edge in upper_switch.edges:
-                if edge not in linked_edges:
-                    lower_switch = edge.lnode
-                    upper_switch_idx = upper_pod_switches.index(upper_switch)
-                    lower_switch_idx = lower_pod_switches.index(lower_switch)
-                    self.addLink(net_upper_pod_switches[upper_switch_idx],
-                                 net_lower_pod_switches[lower_switch_idx],
-                                 bw=15, delay='5ms')
-
-        # creating links between lower layer and servers
-        for server in topo.servers:
-            for edge in server.edges:
-                switch = edge.rnode
-                server_idx = topo.servers.index(server)
-                switch_idx = lower_pod_switches.index(switch)
-                self.addLink(net_lower_pod_switches[switch_idx],
-                             net_servers[server_idx],
-                             bw=15, delay='5ms')
-
+                
 
 def make_mininet_instance(graph_topo):
     net_topo = FattreeNet(graph_topo)

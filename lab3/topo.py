@@ -287,7 +287,7 @@ class Fattree:
             for i, switch in enumerate(lower_layer_switches):
                 for j in range(2, int(self.num_ports / 2 + 2)):
                     host = Node(self.get_host_id(pod_num, i, j), 'h')
-                    host.add_edge(switch)
+                    switch.add_edge(host)
                     self.servers.append(host)
 
             # creating upper layer switches
@@ -304,9 +304,9 @@ class Fattree:
                 core_layer_switches[i].add_edge(upper_layer_switches[stride_num])
 
             # connecting switches in pod
-            for lower in lower_layer_switches:
-                for upper in upper_layer_switches:
-                    lower.add_edge(upper)
+            for upper in upper_layer_switches:
+                for lower in lower_layer_switches:
+                    upper.add_edge(lower)
 
             self.switches.extend(lower_layer_switches)
             self.switches.extend(upper_layer_switches)
