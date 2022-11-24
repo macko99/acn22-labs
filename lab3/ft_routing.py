@@ -13,7 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 
 from ryu.base import app_manager
 from ryu.controller import mac_to_port
@@ -33,8 +33,8 @@ from ryu.lib.packet import ethernet, ether_types
 
 import topo
 
-class FTRouter(app_manager.RyuApp):
 
+class FTRouter(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
@@ -45,43 +45,43 @@ class FTRouter(app_manager.RyuApp):
 
         k = self.topo_net.num_ports
 
-        #lower pod switches
+        # lower pod switches
         for pod_num in range(0, k):
-            for switch_no in range(0, int(k/2)):
+            for switch_no in range(0, int(k / 2)):
                 ip = '10.' + str(pod_num) + '.' + str(switch_no) + '.1'
                 self.routing_table.setdefault(ip, {})
 
-                for host in range(2, int(k/2)+2):
+                for host in range(2, int(k / 2) + 2):
                     mask = '10.' + str(pod_num) + '.' + str(switch_no) + '.' + str(host) + '/32'
                     self.routing_table[ip][mask] = host - 1
 
                 self.routing_table[ip].setdefault('0.0.0.0/0', {})
 
-                for host in range(2, int(k/2) + 2):
+                for host in range(2, int(k / 2) + 2):
                     mask = '0.0.0.' + str(host) + '/8'
-                    port = int(((host - 2 + switch_no) % int(k/2)) + int(k/2)) + 1
+                    port = int(((host - 2 + switch_no) % int(k / 2)) + int(k / 2)) + 1
                     self.routing_table[ip]['0.0.0.0/0'][mask] = port
-                    
-        #upper pod switches
+
+        # upper pod switches
         for pod_num in range(0, k):
-            for switch_no in range(int(k/2), k):
+            for switch_no in range(int(k / 2), k):
                 ip = '10.' + str(pod_num) + '.' + str(switch_no) + '.1'
                 self.routing_table.setdefault(ip, {})
 
-                for subnet_no in range(0, int(k/2)):
+                for subnet_no in range(0, int(k / 2)):
                     mask = '10.' + str(pod_num) + '.' + str(subnet_no) + '.0/24'
                     self.routing_table[ip][mask] = subnet_no + 1
 
                 self.routing_table[ip].setdefault('0.0.0.0/0', {})
 
-                for host in range(2, int(k/2) + 2):
+                for host in range(2, int(k / 2) + 2):
                     mask = '0.0.0.' + str(host) + '/8'
-                    port = int(((host - 2 + switch_no) % int(k/2)) + int(k/2)) + 1
+                    port = int(((host - 2 + switch_no) % int(k / 2)) + int(k / 2)) + 1
                     self.routing_table[ip]['0.0.0.0/0'][mask] = port
 
-        #core switches
-        for j in range(1, int(k/2) + 1):
-            for i in range(1, int(k/2) + 1):
+        # core switches
+        for j in range(1, int(k / 2) + 1):
+            for i in range(1, int(k / 2) + 1):
                 ip = '10.' + str(k) + '.' + str(j) + '.' + str(i)
                 self.routing_table.setdefault(ip, {})
 
@@ -89,15 +89,13 @@ class FTRouter(app_manager.RyuApp):
                     mask = '10.' + str(dest_pod) + '.0.0/16'
                     self.routing_table[ip][mask] = dest_pod + 1
 
-
     # Topology discovery
     @set_ev_cls(event.EventSwitchEnter)
     def get_topology_data(self, ev):
-        
+
         # Switches and links in the network
         switches = get_switch(self, None)
         links = get_link(self, None)
-
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -111,7 +109,6 @@ class FTRouter(app_manager.RyuApp):
                                           ofproto.OFPCML_NO_BUFFER)]
         self.add_flow(datapath, 0, match, actions)
 
-
     # Add a flow entry to the flow-table
     def add_flow(self, datapath, priority, match, actions):
         ofproto = datapath.ofproto
@@ -122,7 +119,6 @@ class FTRouter(app_manager.RyuApp):
         mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
                                 match=match, instructions=inst)
         datapath.send_msg(mod)
-
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
@@ -167,12 +163,12 @@ class FTRouter(app_manager.RyuApp):
         out_port = None
 
         for prefix, port_value in self.routing_table[switch.id].items():
-            how_many_matching_bits = int(int(prefix.split('/')[1])/8)
+            how_many_matching_bits = int(int(prefix.split('/')[1]) / 8)
             prefix = prefix.split('/')[0]
 
             if how_many_matching_bits == 0:
                 for suffix, port in port_value.items():
-                    how_many_matching_bits = int(int(suffix.split('/')[1])/8)
+                    how_many_matching_bits = int(int(suffix.split('/')[1]) / 8)
                     suffix = suffix.split('/')[0]
 
                     if dst_ip.split('.')[-how_many_matching_bits:] == suffix.split('.')[-how_many_matching_bits:]:
