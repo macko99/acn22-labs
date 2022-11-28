@@ -13,3 +13,11 @@ This is the repository holding the code skeleton for the lab assignments for Adv
 (mean run time on M1 mac - 2 min 40 sec)
 
 `python .\reproduce_9.py` (uses multiprocessing to speed up the process of generating the figure 9, by default it uses all available cores of your CPU)
+
+
+## How to fix lab4:
+
+1. Install missing P4 compiler [p4c](https://github.com/p4lang/p4c)
+
+    `sudo apt install p4lang-p4c`
+
