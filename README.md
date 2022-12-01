@@ -21,3 +21,15 @@ This is the repository holding the code skeleton for the lab assignments for Adv
 
     `sudo apt install p4lang-p4c`
 
+    `xhost +local:`
+
+2. cheat sheet 
+
+    `tcpdump -i eth0`
+
+    `echo '[msg]' > /dev/udp/[ip]/[port]`
+
+    `nc -ulp [port]`
+
+    `nc -u [ip] [port]`
+
