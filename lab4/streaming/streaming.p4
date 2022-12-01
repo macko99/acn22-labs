@@ -179,6 +179,11 @@ control MyEgress(inout headers hdr,
         hdr.ethernet.dstAddr = 0x080000000333;
         hdr.ipv4.dstAddr = 0x0a000303;
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+		if (hdr.udp.checksum > 0xfbfb) {
+            hdr.udp.checksum = hdr.udp.checksum - 0xfbfb;
+        } else {
+            hdr.udp.checksum = hdr.udp.checksum + 0x0404;
+        }
     }
  
     apply {
