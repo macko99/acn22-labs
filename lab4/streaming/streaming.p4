@@ -1,26 +1,22 @@
 /* -*- P4_16 -*- */
 #include <core.p4>
 #include <v1model.p4>
- 
+
 #define PKT_INSTANCE_TYPE_INGRESS_CLONE 1
- 
+
+/********************** H E A D E R S  **********************************/
+
 typedef bit<9>  egressSpec_t;
 typedef bit<48> macAddr_t;
 typedef bit<32> ip4Addr_t;
 typedef bit<16> etherType_t;
- 
- 
-/*************************************************************************
-*********************** H E A D E R S  ***********************************
-*************************************************************************/
- 
- 
+
 header ethernet_t {
     macAddr_t dstAddr;
     macAddr_t srcAddr;
     etherType_t etherType;
 }
- 
+
 header ipv4_t {
     bit<4>    version;
     bit<4>    ihl;
@@ -54,19 +50,19 @@ header rtp_t {
     bit<32> timestamp;
     bit<32> SSRC;
 }
- 
+
 struct headers {
     ethernet_t  ethernet;
     ipv4_t      ipv4;
     udp_t       udp;
     rtp_t       rtp;
 }
+
+struct metadata {
+    /* empty */
+}
  
-struct metadata {}
- 
-/*************************************************************************
-*********************** P A R S E R  ***********************************
-*************************************************************************/
+/*********************** P A R S E R  ***********************************/
  
 parser MyParser(packet_in packet,
                 out headers hdr,
@@ -83,7 +79,6 @@ parser MyParser(packet_in packet,
             0x0800: parse_ipv4;
             default: accept;
         }
- 
     }
  
     state parse_ipv4 {
@@ -105,18 +100,14 @@ parser MyParser(packet_in packet,
     }
 }
  
-/*************************************************************************
-************   C H E C K S U M    V E R I F I C A T I O N   *************
-*************************************************************************/
+/************   C H E C K S U M    V E R I F I C A T I O N   *************/
  
 control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
     apply {
     }
 }
  
-/*************************************************************************
-**************  I N G R E S S   P R O C E S S I N G   *******************
-*************************************************************************/
+/**************  I N G R E S S   P R O C E S S I N G   *******************/
  
 control MyIngress(inout headers hdr,
                   inout metadata meta,
@@ -125,19 +116,19 @@ control MyIngress(inout headers hdr,
     action drop() {
         mark_to_drop(standard_metadata);
     }
- 
+
+    action clone_packet() {
+        const bit<32> REPORT_MIRROR_SESSION_ID = 500;
+        clone(CloneType.I2E, REPORT_MIRROR_SESSION_ID);
+    }
+
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
         standard_metadata.egress_spec = port;
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
         hdr.ethernet.dstAddr = dstAddr;
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
- 
-    action clone_packet() {
-        const bit<32> REPORT_MIRROR_SESSION_ID = 500;
-        clone(CloneType.I2E, REPORT_MIRROR_SESSION_ID);
-    }
- 
+
     table ipv4_lpm {
         key = {
             hdr.ipv4.dstAddr: lpm;
@@ -152,18 +143,15 @@ control MyIngress(inout headers hdr,
     }
     apply {
         if (hdr.ipv4.isValid()) {
-            if ((hdr.ipv4.dstAddr == 0x0a000707 && hdr.ipv4.srcAddr == 0x0a000101) || (hdr.ipv4.dstAddr == 0x0a000101 && hdr.ipv4.srcAddr == 0x0a000707)) {
+            if ((hdr.ipv4.dstAddr == 0x0a000707 && hdr.ipv4.srcAddr == 0x0a000101)) {  // clone packets going from 10.0.1.1 to 10.0.7.7
                 clone_packet();
             }
             ipv4_lpm.apply();
         }
     }
- 
 }
  
-/*************************************************************************
-****************  E G R E S S   P R O C E S S I N G   *******************
-*************************************************************************/
+/****************  E G R E S S   P R O C E S S I N G   *******************/
  
 control MyEgress(inout headers hdr,
                  inout metadata meta,
@@ -173,35 +161,29 @@ control MyEgress(inout headers hdr,
         mark_to_drop(standard_metadata);
     }
 
-    action change_h1_to_h7_addr() {
-        standard_metadata.egress_spec = 0x3;
+    action change_to_h3_addr() {
+        standard_metadata.egress_spec = 0x3;	// output port
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
         hdr.ethernet.dstAddr = 0x080000000333;
         hdr.ipv4.dstAddr = 0x0a000303;
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
-		if (hdr.udp.checksum > 0xfbfb) {
-            hdr.udp.checksum = hdr.udp.checksum - 0xfbfb;
-        } else {
-            hdr.udp.checksum = hdr.udp.checksum + 0x0404;
+        
+	// UDP checksum only needs to update to account for 0x0707 -> 0x0303
+        if (hdr.udp.checksum <= 0xfbfb) {	// adding 0x0404 usually works (not subtracting, because the result is inverted)
+            hdr.udp.checksum = hdr.udp.checksum + 0x0404;	
+        } else {				// if it would overflow, subtract 0xffff and then add the 0x0404 (so 0xffff - 0x0404 = 0xfbfb)
+            hdr.udp.checksum = hdr.udp.checksum - 0xfbfb;	
         }
     }
- 
+
     apply {
- 
-        if (standard_metadata.instance_type == PKT_INSTANCE_TYPE_INGRESS_CLONE) {
-            if (hdr.ipv4.dstAddr == 0x0a000707) {
-                change_h1_to_h7_addr();
-            }
-            else{
-                drop();
-            }
+        if (standard_metadata.instance_type == PKT_INSTANCE_TYPE_INGRESS_CLONE && hdr.ipv4.dstAddr == 0x0a000707) {
+            change_to_h3_addr();	// take clones bound towards 10.0.7.7 and redirect to 10.0.3.3 
         }
     }
 }
  
-/*************************************************************************
-*************   C H E C K S U M    C O M P U T A T I O N   **************
-*************************************************************************/
+/*************   C H E C K S U M    C O M P U T A T I O N   **************/
  
 control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
     apply {
@@ -223,9 +205,7 @@ control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
     }
 }
  
-/*************************************************************************
-***********************  D E P A R S E R  *******************************
-*************************************************************************/
+/***********************  D E P A R S E R  *******************************/
  
 control MyDeparser(packet_out packet, in headers hdr) {
     apply {
@@ -236,9 +216,7 @@ control MyDeparser(packet_out packet, in headers hdr) {
     }
 }
  
-/*************************************************************************
-***********************  S W I T C H  *******************************
-*************************************************************************/
+/***********************  S W I T C H  *******************************/
  
 V1Switch(
 MyParser(),
