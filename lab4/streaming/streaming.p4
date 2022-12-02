@@ -31,31 +31,18 @@ header ipv4_t {
     ip4Addr_t srcAddr;
     ip4Addr_t dstAddr;
 }
- 
+
 header udp_t {
     bit<16> srcPort;
     bit<16> dstPort;
     bit<16> hdr_length;
     bit<16> checksum;
 }
- 
-header rtp_t {
-    bit<2>  version;
-    bit<1>  padding;
-    bit<1>  extension;
-    bit<4>  CSRC_count;
-    bit<1>  marker;
-    bit<7>  payload_type;
-    bit<16> sequence_number;
-    bit<32> timestamp;
-    bit<32> SSRC;
-}
 
 struct headers {
     ethernet_t  ethernet;
     ipv4_t      ipv4;
     udp_t       udp;
-    rtp_t       rtp;
 }
 
 struct metadata {
@@ -91,11 +78,6 @@ parser MyParser(packet_in packet,
  
     state parse_udp {
         packet.extract(hdr.udp);
-        transition parse_rtp;
-    }
- 
-    state parse_rtp {
-        packet.extract(hdr.rtp);
         transition accept;
     }
 }
@@ -160,7 +142,7 @@ control MyEgress(inout headers hdr,
     action drop() {
         mark_to_drop(standard_metadata);
     }
-
+/
     action change_to_h3_addr() {
         standard_metadata.egress_spec = 0x3;	// output port
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
@@ -212,7 +194,6 @@ control MyDeparser(packet_out packet, in headers hdr) {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4);
         packet.emit(hdr.udp);
-        packet.emit(hdr.rtp);
     }
 }
  
