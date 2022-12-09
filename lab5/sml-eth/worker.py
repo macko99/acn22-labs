@@ -4,7 +4,7 @@ from lib.worker import *
 from scapy.all import Packet
 
 NUM_ITER   = 1     # TODO: Make sure your program can handle larger values
-CHUNK_SIZE = None  # TODO: Define me
+CHUNK_SIZE = 16 #None  # TODO: Define me
 
 class SwitchML(Packet):
     name = "SwitchMLPacket"
@@ -29,9 +29,9 @@ def AllReduce(iface, rank, data, result):
 def main():
     iface = 'eth0'
     rank = GetRankOrExit()
-    Log("Started...")
+    Log("Started...", rank)
     for i in range(NUM_ITER):
-        num_elem = GenMultipleOfInRange(2, 2048, 2 * CHUNK_SIZE) # You may want to 'fix' num_elem for debugging
+        num_elem = 4096 #GenMultipleOfInRange(2, 2048, 2 * CHUNK_SIZE) # You may want to 'fix' num_elem for debugging
         data_out = GenInts(num_elem)
         data_in = GenInts(num_elem, 0)
         CreateTestData("eth-iter-%d" % i, rank, data_out)
