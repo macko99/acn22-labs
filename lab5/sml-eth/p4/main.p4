@@ -4,18 +4,22 @@
 typedef bit<9>  sw_port_t;   /*< Switch port */
 typedef bit<48> mac_addr_t;  /*< MAC address */
 
-const bit<16> TYPE_SML = 0x05FF // ?? Arbitrary for now, to be decided later I guess
+const bit<16> TYPE_SML = 0x05FF; // ?? Arbitrary for now, to be decided later I guess
 const int NUM_WORKERS = 2;
 
+
+//int curr_aggregation_value = 0; // TODO is it allowed to store this here? Don't think so,
+//int num_chunks_received = 0;
+
 header ethernet_t {
-    macAddr_t dstAddr;
-    macAddr_t srcAddr;
+    mac_addr_t dstAddr;
+    mac_addr_t srcAddr;
     bit<16>   etherType;
 }
 
 header sml_t {
   /* TODO: Define me */
-  int vector;
+  bit<32> vector;
 }
 
 struct headers {
@@ -30,50 +34,49 @@ parser TheParser(packet_in packet,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
   /* TODO: Implement me */
-  state start {}
+  state start {
+    transition parse_ethernet;
+  }
   
   state parse_ethernet {
-    packet.extract(hdr.ethernet);
-    transition select(hdr.ethernet.etherType) {
+    packet.extract(hdr.eth);
+    transition select(hdr.eth.etherType) {
       TYPE_SML: parse_sml;
       default: accept;
     }
   }
 
   state parse_sml {
-    packet.extract(hdr.sml_t);
+    packet.extract(hdr.sml);
     transition accept;
   }
 }
-
-int curr_aggregation_value = 0; // TODO is it allowed to store this here? Don't think so,
-short num_chunks_received = 0;
 
 control TheIngress(inout headers hdr,
                    inout metadata meta,
                    inout standard_metadata_t standard_metadata) {
                    
-  broadcast_result(broadcast_value) {
-  	hdr.sml.vector = broadcast_value;
+  action broadcast_result(/*broadcast_value*/) {
+  	hdr.sml.vector = 4; //broadcast_value;
   	standard_metadata.mcast_grp = 1;
   	//TODO: send stuff
   }
   
-  reset() {
-  	curr_aggregation_value = 0;
-  	num_chunks_received = 0;
+  action reset() {
+  	//curr_aggregation_value = 0;
+  	//num_chunks_received = 0;
   }             
   
   apply {
     /* TODO: Implement me */
-    curr_aggregation_value += hdr.sml.vector;
+    //curr_aggregation_value += hdr.sml.vector;
     
-    if (++num_chunks_received == NUM_WORKERS) {
-    	broadcast_result(curr_aggregation_value);
+    //if (++num_chunks_received == NUM_WORKERS) {
+    	broadcast_result(/*curr_aggregation_value*/);
     	reset();
-    } else {
-    	mark_to_drop(standard_metadata);
-    }
+    //} else {
+    //	mark_to_drop(standard_metadata);
+    //}
   }
 }
 

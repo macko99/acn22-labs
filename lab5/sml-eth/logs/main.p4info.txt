@@ -1,0 +1,17 @@
+pkg_info {
+  arch: "v1model"
+}
+actions {
+  preamble {
+    id: 23127342
+    name: "TheIngress.broadcast_result"
+    alias: "broadcast_result"
+  }
+}
+actions {
+  preamble {
+    id: 25958515
+    name: "TheIngress.reset"
+    alias: "reset"
+  }
+}

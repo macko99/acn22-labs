@@ -1,0 +1,89 @@
+Calling target program-options parser
+[16:49:30.774] [bmv2] [D] [thread 6075] Set default default entry for table 'tbl_broadcast_result': TheIngress.broadcast_result - 
+[16:49:30.774] [bmv2] [D] [thread 6075] Set default default entry for table 'tbl_reset': TheIngress.reset - 
+Adding interface s0-eth1 as port 1
+[16:49:30.774] [bmv2] [D] [thread 6075] Adding interface s0-eth1 as port 1
+Adding interface s0-eth2 as port 2
+[16:49:30.809] [bmv2] [D] [thread 6075] Adding interface s0-eth2 as port 2
+Server listening on 0.0.0.0:50051
+[16:49:30.849] [bmv2] [I] [thread 6075] Starting Thrift server on port 9090
+[16:49:30.849] [bmv2] [I] [thread 6075] Thrift server was started
+[16:49:31.375] [bmv2] [W] [thread 6099] [P4Runtime] p4::tmp::P4DeviceConfig is deprecated
+[16:49:31.376] [bmv2] [D] [thread 6099] Set default default entry for table 'tbl_broadcast_result': TheIngress.broadcast_result - 
+[16:49:31.376] [bmv2] [D] [thread 6099] Set default default entry for table 'tbl_reset': TheIngress.reset - 
+[16:49:31.377] [bmv2] [D] [thread 6099] simple_switch target has been notified of a config swap
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Processing packet received on port 1
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Parser 'parser': start
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Parser 'parser' entering state 'start'
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Extracting header 'eth'
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Parser state 'start': key is 0800
+[16:49:45.792] [bmv2] [T] [thread 6086] [0.0] [cxt 0] Bytes parsed: 14
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Parser 'parser': end
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Pipeline 'ingress': start
+[16:49:45.792] [bmv2] [T] [thread 6086] [0.0] [cxt 0] Applying table 'tbl_broadcast_result'
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Looking up key:
+
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Table 'tbl_broadcast_result': miss
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Action entry is TheIngress.broadcast_result - 
+[16:49:45.792] [bmv2] [T] [thread 6086] [0.0] [cxt 0] Action TheIngress.broadcast_result
+[16:49:45.792] [bmv2] [T] [thread 6086] [0.0] [cxt 0] /home/acn22/Groupwork/lab5/sml-eth/p4/main.p4(60) Primitive hdr.sml.vector = 4
+[16:49:45.792] [bmv2] [T] [thread 6086] [0.0] [cxt 0] /home/acn22/Groupwork/lab5/sml-eth/p4/main.p4(61) Primitive standard_metadata.mcast_grp = 1
+[16:49:45.792] [bmv2] [T] [thread 6086] [0.0] [cxt 0] Applying table 'tbl_reset'
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Looking up key:
+
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Table 'tbl_reset': miss
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Action entry is TheIngress.reset - 
+[16:49:45.792] [bmv2] [T] [thread 6086] [0.0] [cxt 0] Action TheIngress.reset
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Pipeline 'ingress': end
+[16:49:45.792] [bmv2] [D] [thread 6086] [0.0] [cxt 0] Multicast requested for packet
+[16:49:45.792] [bmv2] [W] [thread 6086] Replication requested for mgid 1, which is not known to the PRE
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Processing packet received on port 1
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Parser 'parser': start
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Parser 'parser' entering state 'start'
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Extracting header 'eth'
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Parser state 'start': key is 0800
+[16:49:46.810] [bmv2] [T] [thread 6086] [1.0] [cxt 0] Bytes parsed: 14
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Parser 'parser': end
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Pipeline 'ingress': start
+[16:49:46.810] [bmv2] [T] [thread 6086] [1.0] [cxt 0] Applying table 'tbl_broadcast_result'
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Looking up key:
+
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Table 'tbl_broadcast_result': miss
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Action entry is TheIngress.broadcast_result - 
+[16:49:46.810] [bmv2] [T] [thread 6086] [1.0] [cxt 0] Action TheIngress.broadcast_result
+[16:49:46.810] [bmv2] [T] [thread 6086] [1.0] [cxt 0] /home/acn22/Groupwork/lab5/sml-eth/p4/main.p4(60) Primitive hdr.sml.vector = 4
+[16:49:46.810] [bmv2] [T] [thread 6086] [1.0] [cxt 0] /home/acn22/Groupwork/lab5/sml-eth/p4/main.p4(61) Primitive standard_metadata.mcast_grp = 1
+[16:49:46.810] [bmv2] [T] [thread 6086] [1.0] [cxt 0] Applying table 'tbl_reset'
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Looking up key:
+
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Table 'tbl_reset': miss
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Action entry is TheIngress.reset - 
+[16:49:46.810] [bmv2] [T] [thread 6086] [1.0] [cxt 0] Action TheIngress.reset
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Pipeline 'ingress': end
+[16:49:46.810] [bmv2] [D] [thread 6086] [1.0] [cxt 0] Multicast requested for packet
+[16:49:46.810] [bmv2] [W] [thread 6086] Replication requested for mgid 1, which is not known to the PRE
+[16:49:47.845] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Processing packet received on port 1
+[16:49:47.845] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Parser 'parser': start
+[16:49:47.845] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Parser 'parser' entering state 'start'
+[16:49:47.845] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Extracting header 'eth'
+[16:49:47.845] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Parser state 'start': key is 0800
+[16:49:47.845] [bmv2] [T] [thread 6086] [2.0] [cxt 0] Bytes parsed: 14
+[16:49:47.845] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Parser 'parser': end
+[16:49:47.846] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Pipeline 'ingress': start
+[16:49:47.846] [bmv2] [T] [thread 6086] [2.0] [cxt 0] Applying table 'tbl_broadcast_result'
+[16:49:47.846] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Looking up key:
+
+[16:49:47.846] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Table 'tbl_broadcast_result': miss
+[16:49:47.846] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Action entry is TheIngress.broadcast_result - 
+[16:49:47.846] [bmv2] [T] [thread 6086] [2.0] [cxt 0] Action TheIngress.broadcast_result
+[16:49:47.846] [bmv2] [T] [thread 6086] [2.0] [cxt 0] /home/acn22/Groupwork/lab5/sml-eth/p4/main.p4(60) Primitive hdr.sml.vector = 4
+[16:49:47.846] [bmv2] [T] [thread 6086] [2.0] [cxt 0] /home/acn22/Groupwork/lab5/sml-eth/p4/main.p4(61) Primitive standard_metadata.mcast_grp = 1
+[16:49:47.846] [bmv2] [T] [thread 6086] [2.0] [cxt 0] Applying table 'tbl_reset'
+[16:49:47.846] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Looking up key:
+
+[16:49:47.846] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Table 'tbl_reset': miss
+[16:49:47.846] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Action entry is TheIngress.reset - 
+[16:49:47.846] [bmv2] [T] [thread 6086] [2.0] [cxt 0] Action TheIngress.reset
+[16:49:47.846] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Pipeline 'ingress': end
+[16:49:47.846] [bmv2] [D] [thread 6086] [2.0] [cxt 0] Multicast requested for packet
+[16:49:47.846] [bmv2] [W] [thread 6086] Replication requested for mgid 1, which is not known to the PRE

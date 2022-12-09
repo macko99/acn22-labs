@@ -16,7 +16,8 @@ class SMLTopo(Topo):
         w0 = self.addHost('w0', ip='10.0.0.1')        
         w1 = self.addHost('w1', ip='10.0.0.2')
 
-        s1 = self.addSwitch( 's1' )
+        s0 = self.addSwitch('s0')
+        #s1.addMulticastGroup(mgid=1);
 
         self.addLink(w0,s0,bw=15, delay='10ms')
         self.addLink(w1,s0,bw=15, delay='10ms')

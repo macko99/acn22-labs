@@ -13,6 +13,9 @@ class SwitchML(Packet):
     ]
 
 def AllReduce(iface, rank, data, result):
+    packet = Ether()/IP(dst='8.8.8.8')/Raw(data);
+    send(packet);
+
     """
     Perform in-network all-reduce over ethernet
 
