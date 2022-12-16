@@ -7,10 +7,6 @@ typedef bit<48> mac_addr_t;  /*< MAC address */
 const bit<16> TYPE_SML = 0x05FF; // ?? Arbitrary for now, to be decided later I guess
 const int NUM_WORKERS = 2;
 
-
-//int curr_aggregation_value = 0; // TODO is it allowed to store this here? Don't think so,
-//int num_chunks_received = 0;
-
 header ethernet_t {
     mac_addr_t dstAddr;
     mac_addr_t srcAddr;
@@ -42,7 +38,7 @@ parser TheParser(packet_in packet,
     packet.extract(hdr.eth);
     transition select(hdr.eth.etherType) {
       TYPE_SML: parse_sml;
-      default: accept;
+      // no default, non-SML packets are dropped
     }
   }
 
@@ -55,28 +51,41 @@ parser TheParser(packet_in packet,
 control TheIngress(inout headers hdr,
                    inout metadata meta,
                    inout standard_metadata_t standard_metadata) {
-                   
-  action broadcast_result(/*broadcast_value*/) {
-  	hdr.sml.vector = 4; //broadcast_value;
-  	standard_metadata.mcast_grp = 1;
-  	//TODO: send stuff
+
+  table debug {
+    key = { hdr.eth.etherType : exact;
+            hdr.sml.vector : exact;
+            standard_metadata.mcast_grp : exact; }
+    actions = {}
   }
-  
-  action reset() {
-  	//curr_aggregation_value = 0;
-  	//num_chunks_received = 0;
-  }             
-  
+
+  register<bit<40>>(128) reg;
+
   apply {
     /* TODO: Implement me */
     //curr_aggregation_value += hdr.sml.vector;
-    
-    //if (++num_chunks_received == NUM_WORKERS) {
-    	broadcast_result(/*curr_aggregation_value*/);
-    	reset();
-    //} else {
-    //	mark_to_drop(standard_metadata);
-    //}
+    bit<40> tmp;
+    bit<32> curr_aggregation_value;
+    bit<8> num_chunks_received;
+    @atomic {
+    	reg.read(tmp, 0);
+
+    	curr_aggregation_value = tmp[39:8];
+    	num_chunks_received = tmp[7:0];
+
+    	curr_aggregation_value = curr_aggregation_value + hdr.sml.vector;
+    	num_chunks_received = num_chunks_received + 1;
+
+    	if (num_chunks_received == NUM_WORKERS) {
+    	    hdr.sml.vector = curr_aggregation_value;
+    	    standard_metadata.mcast_grp = 1;
+    	    reg.write(0, 0);	// clear register for reuse
+        } else {
+            reg.write(0, curr_aggregation_value ++ num_chunks_received);
+            mark_to_drop(standard_metadata);
+        }
+        debug.apply();
+    }
   }
 }
 

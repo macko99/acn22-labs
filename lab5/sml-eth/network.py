@@ -11,17 +11,16 @@ class SMLTopo(Topo):
         Topo.__init__(self, **opts)
         # TODO: Implement me. Feel free to modify the constructor signature
         # NOTE: Make sure worker names are consistent with RunWorkers() below
-        
+
         # TODO: dummy topology while setting up other functions
-        w0 = self.addHost('w0', ip='10.0.0.1')        
-        w1 = self.addHost('w1', ip='10.0.0.2')
+        w0 = self.addHost('w0', ip='10.0.0.0/24', mac='00:00:00:00:00:00')        
+        w1 = self.addHost('w1', ip='10.0.0.1/24', mac='00:00:00:00:00:01')
 
         s0 = self.addSwitch('s0')
-        #s1.addMulticastGroup(mgid=1);
 
-        self.addLink(w0,s0,bw=15, delay='10ms')
-        self.addLink(w1,s0,bw=15, delay='10ms')
-
+        self.addLink(w0,s0,bw=15, delay='100ms')
+        self.addLink(w1,s0,bw=15, delay='100ms')
+        
 def RunWorkers(net):
     """
     Starts the workers and waits for their completion.
@@ -49,5 +48,7 @@ net.run_control_plane = lambda: RunControlPlane(net)
 net.run_workers = lambda: RunWorkers(net)
 net.start()
 net.run_control_plane()
+net.get("s0").addMulticastGroup(mgid=1, ports=range(1, NUM_WORKERS + 1))
+print(vars(net.get("s0")))
 CLI(net)
 net.stop()
