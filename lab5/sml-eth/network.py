@@ -4,22 +4,16 @@ from mininet.topo import Topo
 from mininet.cli import CLI
 import os
 
-NUM_WORKERS = 2 # TODO: Make sure your program can handle larger values
+NUM_WORKERS = 3 # TODO: Make sure your program can handle larger values
 
 class SMLTopo(Topo):
     def __init__(self, **opts):
         Topo.__init__(self, **opts)
-        # TODO: Implement me. Feel free to modify the constructor signature
-        # NOTE: Make sure worker names are consistent with RunWorkers() below
-
-        # TODO: dummy topology while setting up other functions
-        w0 = self.addHost('w0', ip='10.0.0.0/24', mac='00:00:00:00:00:00')        
-        w1 = self.addHost('w1', ip='10.0.0.1/24', mac='00:00:00:00:00:01')
 
         s0 = self.addSwitch('s0')
-
-        self.addLink(w0,s0,bw=15, delay='100ms')
-        self.addLink(w1,s0,bw=15, delay='100ms')
+        for rank in range(NUM_WORKERS):
+            worker = self.addHost('w' + str(rank), ip='10.0.2.' + str(rank) + '/24')
+            self.addLink(worker, s0, bw=15, delay='10ms', port1=1)
         
 def RunWorkers(net):
     """
@@ -39,8 +33,7 @@ def RunControlPlane(net):
     """
     One-time control plane configuration
     """
-    # TODO: Implement me (if needed)
-    pass
+    net.get("s0").addMulticastGroup(mgid=1, ports=range(1, NUM_WORKERS + 1))
 
 topo = SMLTopo() # TODO: Create an SMLTopo instance
 net = P4Mininet(program="p4/main.p4", topo=topo)
@@ -48,7 +41,5 @@ net.run_control_plane = lambda: RunControlPlane(net)
 net.run_workers = lambda: RunWorkers(net)
 net.start()
 net.run_control_plane()
-net.get("s0").addMulticastGroup(mgid=1, ports=range(1, NUM_WORKERS + 1))
-print(vars(net.get("s0")))
 CLI(net)
 net.stop()

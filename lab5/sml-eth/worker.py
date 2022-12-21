@@ -3,22 +3,17 @@ from lib.test import CreateTestData, RunIntTest
 from lib.worker import *
 from scapy.all import *
 
-NUM_ITER   = 1     # TODO: Make sure your program can handle larger values
-CHUNK_SIZE = 16 #None  # TODO: Define me
+NUM_ITER   = 4
+CHUNK_SIZE = 63
 TYPE_SML = 0x05FF
 
 class SwitchML(Packet):
     name = "SwitchMLPacket"
     fields_desc = [
-        # TODO: Implement me
-        IntField('vector', 0)
+        FieldListField("vector", None, IntField('element', 0))
     ]
 
-def AllReduce(iface, rank, data, result):    
-    pack = Ether(type=TYPE_SML)/SwitchML(vector=data[0])
-    response = srp1(pack, iface=iface)
-    result[0] = int.from_bytes(response[Raw].load, 'big')
-
+def AllReduce(iface, rank, data, result):
     """
     Perform in-network all-reduce over ethernet
 
@@ -29,19 +24,22 @@ def AllReduce(iface, rank, data, result):
 
     This function is blocking, i.e. only returns with a result or error
     """
-    # TODO: Implement me
+    for chunk_start in range(0, len(data), CHUNK_SIZE): 
+        pack = Ether(type=TYPE_SML)/SwitchML(vector=data[chunk_start:chunk_start + CHUNK_SIZE])
+        response = srp1(pack, iface=iface)
+        response_data = response[Raw].load
+        result[chunk_start:chunk_start + CHUNK_SIZE] = [int.from_bytes(response_data[i:i+4], 'big') for i in range(0, len(response_load), 4)]
 
 def main():
     iface = 'eth0'
     rank = GetRankOrExit()
     Log("Started...", rank)
     for i in range(NUM_ITER):
-        num_elem = 1 #GenMultipleOfInRange(2, 2048, 2 * CHUNK_SIZE) # You may want to 'fix' num_elem for debugging
+        num_elem = CHUNK_SIZE#GenMultipleOfInRange(2, 2048, 2 * CHUNK_SIZE) # You may want to 'fix' num_elem for debugging
         data_out = GenInts(num_elem)
         data_in = GenInts(num_elem, 0)
         CreateTestData("eth-iter-%d" % i, rank, data_out)
         AllReduce(iface, rank, data_out, data_in)
-        print(data_in) #TODO
         RunIntTest("eth-iter-%d" % i, rank, data_in, True)
     Log("Done")
 

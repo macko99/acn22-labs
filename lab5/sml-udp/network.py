@@ -9,9 +9,8 @@ NUM_WORKERS = 3 # TODO: Make sure your program can handle larger values
 class SMLTopo(Topo):
     def __init__(self, **opts):
         Topo.__init__(self, **opts)
-        # TODO: Implement me. Feel free to modify the constructor signature
-        # NOTE: Make sure worker names are consistent with RunWorkers() below
-        s0 = self.addSwitch('s0')
+
+        s0 = self.addSwitch('s0', ip='10.0.2.15/24')
         for rank in range(NUM_WORKERS):
             worker = self.addHost('w' + str(rank), ip='10.0.2.' + str(rank) + '/24')
             self.addLink(worker, s0, bw=15, delay='10ms', port1=1)
@@ -37,7 +36,9 @@ def RunControlPlane(net):
     """
     s0 = net.get("s0")
     s0.addMulticastGroup(mgid=1, ports=range(1, NUM_WORKERS + 1))
-    #s0.insertTableEntry(table_name='forward', match_fields='255.255.255.255', action_name='set_dmac', action_params='ff:ff:ff:ff:ff:ff')
+    s0.setMAC("00:00:00:00:00:ff")
+    for i in range(NUM_WORKERS):
+        net.get("w" + str(i)).setARP('10.0.2.15', "00:00:00:00:00:ff")
 
 topo = SMLTopo() # TODO: Create an SMLTopo instance
 net = P4Mininet(program="p4/main.p4", topo=topo)

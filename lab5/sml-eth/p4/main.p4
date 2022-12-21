@@ -4,8 +4,14 @@
 typedef bit<9>  sw_port_t;   /*< Switch port */
 typedef bit<48> mac_addr_t;  /*< MAC address */
 
-const bit<16> TYPE_SML = 0x05FF; // ?? Arbitrary for now, to be decided later I guess
-const int NUM_WORKERS = 2;
+#define TYPE_SML 0x05FF // ?? Arbitrary for now, to be decided later I guess
+#define NUM_WORKERS 3
+#define CHUNK_SIZE 63
+
+/* DERIVED DEFINES */
+#define VECTOR_LENGTH_BITS (CHUNK_SIZE * 32)
+#define VECTOR_INDICES VECTOR_LENGTH_BITS+7:8
+#define NUM_CHUNKS_RECEIVED_INDICES 7:0
 
 header ethernet_t {
     mac_addr_t dstAddr;
@@ -14,8 +20,7 @@ header ethernet_t {
 }
 
 header sml_t {
-  /* TODO: Define me */
-  bit<32> vector;
+  bit<VECTOR_LENGTH_BITS> vector;
 }
 
 struct headers {
@@ -29,7 +34,6 @@ parser TheParser(packet_in packet,
                  out headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
-  /* TODO: Implement me */
   state start {
     transition parse_ethernet;
   }
@@ -59,29 +63,25 @@ control TheIngress(inout headers hdr,
     actions = {}
   }
 
-  register<bit<40>>(128) reg;
+  register<bit<(VECTOR_LENGTH_BITS + 8)>>(1) reg;
 
   apply {
-    /* TODO: Implement me */
-    //curr_aggregation_value += hdr.sml.vector;
-    bit<40> tmp;
-    bit<32> curr_aggregation_value;
-    bit<8> num_chunks_received;
+    bit<(VECTOR_LENGTH_BITS + 8)> reg_val;
     @atomic {
-    	reg.read(tmp, 0);
+	//Read register
+    	reg.read(reg_val, 0);
 
-    	curr_aggregation_value = tmp[39:8];
-    	num_chunks_received = tmp[7:0];
-
-    	curr_aggregation_value = curr_aggregation_value + hdr.sml.vector;
-    	num_chunks_received = num_chunks_received + 1;
-
-    	if (num_chunks_received == NUM_WORKERS) {
-    	    hdr.sml.vector = curr_aggregation_value;
+	//Update values in register
+    	reg_val[NUM_CHUNKS_RECEIVED_INDICES] = reg_val[NUM_CHUNKS_RECEIVED_INDICES] + 1;
+    	reg_val[VECTOR_INDICES] = reg_val[VECTOR_INDICES] + hdr.sml.vector;
+    	
+    	if (reg_val[NUM_CHUNKS_RECEIVED_INDICES] == NUM_WORKERS) {
+    	    //All work received: broadcast
+    	    hdr.sml.vector = reg_val[VECTOR_INDICES];
     	    standard_metadata.mcast_grp = 1;
-    	    reg.write(0, 0);	// clear register for reuse
+    	    reg.write(0, 0);		// Clear register for reuse
         } else {
-            reg.write(0, curr_aggregation_value ++ num_chunks_received);
+            reg.write(0, reg_val);	// Write updated values to register
             mark_to_drop(standard_metadata);
         }
         debug.apply();
@@ -111,7 +111,6 @@ control TheChecksumComputation(inout headers  hdr, inout metadata meta) {
 
 control TheDeparser(packet_out packet, in headers hdr) {
   apply {
-    /* TODO: Implement me */
     packet.emit(hdr.eth);
     packet.emit(hdr.sml);
   }

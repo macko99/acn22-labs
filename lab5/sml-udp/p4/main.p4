@@ -5,9 +5,14 @@ typedef bit<9>  sw_port_t;   /*< Switch port */
 typedef bit<48> mac_addr_t;  /*< MAC address */
 typedef bit<32> ip4_addr_t;  /*< IPv4 address */
 
-const bit<16> TYPE_SML = 0x05FF; // ?? Arbitrary for now, to be decided later I guess
-const int NUM_WORKERS = 3;
-const int CHUNK_SIZE = 2;
+#define TYPE_SML 0x05FF // ?? Arbitrary for now, to be decided later I guess
+#define NUM_WORKERS 3
+#define CHUNK_SIZE 63
+
+/* DERIVED DEFINES */
+#define VECTOR_LENGTH_BITS (CHUNK_SIZE * 32)
+#define VECTOR_INDICES VECTOR_LENGTH_BITS+7:8
+#define NUM_CHUNKS_RECEIVED_INDICES 7:0
 
 header ethernet_t {
   mac_addr_t dstAddr;
@@ -38,12 +43,11 @@ header udp_t {
 }
 
 header sml_t {
-  bit<32> vector0;
-  bit<32> vector1;
+  bit<VECTOR_LENGTH_BITS> vector;
 }
 
 struct headers {
-  ethernet_t ethernet;
+  ethernet_t eth;
   ipv4_t ipv4;
   udp_t udp;
   sml_t sml;
@@ -55,26 +59,35 @@ parser TheParser(packet_in packet,
                  out headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
-  /* TODO: Implement me */
   state start {
     transition parse_ethernet;
   }
-  
+
   state parse_ethernet {
-    packet.extract(hdr.ethernet);
-    packet.extract(hdr.ipv4);
-    packet.extract(hdr.udp);
-    packet.extract(hdr.sml);
-    transition accept;
-    /*transition select(hdr.ethernet.etherType) {
-      TYPE_SML: parse_sml;
+    packet.extract(hdr.eth);
+    transition select(hdr.eth.etherType) {
+      0x0800: parse_ipv4;
       default: accept;
-    }*/
+    }
+  }
+
+  state parse_ipv4 {
+    packet.extract(hdr.ipv4);
+    transition select(hdr.ipv4.protocol) {
+      0x11: parse_udp;
+      default: accept;
+    }
+  }
+
+  state parse_udp {
+    packet.extract(hdr.udp);
+    transition select(hdr.ipv4.dstAddr) {
+      0x0A00020f: parse_sml;	// TODO packets sent specifically to this switch are likely SML, but this isn't the best solution
+      default: accept;
+    }
   }
 
   state parse_sml {
-    packet.extract(hdr.ipv4);
-    packet.extract(hdr.udp);
     packet.extract(hdr.sml);
     transition accept;
   }
@@ -85,48 +98,39 @@ control TheIngress(inout headers hdr,
                    inout standard_metadata_t standard_metadata) {
 
   table debug {
-    key = { hdr.ethernet.etherType : exact;
-            hdr.sml.vector0 : exact;
-            hdr.sml.vector1 : exact;
+    key = { hdr.sml.vector : exact;
             standard_metadata.mcast_grp : exact;
-            hdr.ipv4.hdrChecksum : exact; }
+            hdr.ipv4.protocol : exact;
+             }
     actions = {}
   }
 
-  register<bit<72>>(128) reg;
+  register<bit<(VECTOR_LENGTH_BITS + 8)>>(1) reg;
 
   apply {
-    /* TODO: Implement me */
-    bit<72> tmp;
-    bit<32> curr_aggregation_value1;
-    bit<32> curr_aggregation_value0;
-    bit<8> num_chunks_received;
-    
+    bit<(VECTOR_LENGTH_BITS + 8)> reg_val;
     @atomic {
-    	reg.read(tmp, 0);
+	//Read register
+    	reg.read(reg_val, 0);
 
-    	curr_aggregation_value1 = tmp[71:40];
-    	curr_aggregation_value0 = tmp[39:8];
-    	num_chunks_received = tmp[7:0];
-
-    	curr_aggregation_value0 = curr_aggregation_value0 + hdr.sml.vector0;
-    	curr_aggregation_value1 = curr_aggregation_value1 + hdr.sml.vector1;
-    	num_chunks_received = num_chunks_received + 1;
-
-    	if (num_chunks_received == NUM_WORKERS) {
-    	    hdr.sml.vector0 = curr_aggregation_value0;
-    	    hdr.sml.vector1 = curr_aggregation_value1;
-
+	//Update values in register
+    	reg_val[NUM_CHUNKS_RECEIVED_INDICES] = reg_val[NUM_CHUNKS_RECEIVED_INDICES] + 1;
+    	reg_val[VECTOR_INDICES] = reg_val[VECTOR_INDICES] + hdr.sml.vector;
+    	
+    	if (reg_val[NUM_CHUNKS_RECEIVED_INDICES] == NUM_WORKERS) {
+    	    //All work received: broadcast
+    	    hdr.sml.vector = reg_val[VECTOR_INDICES];
+    	    hdr.eth.dstAddr = 0xffffffffffff;
+    	    hdr.ipv4.dstAddr = 0x0A0002ff;
     	    hdr.ipv4.srcAddr = 0x0A00020f;
     	    standard_metadata.mcast_grp = 1;
-
-    	    reg.write(0, 0);	// clear register for reuse
+    	    reg.write(0, 0);		// Clear register for reuse
         } else {
-            reg.write(0, curr_aggregation_value1 ++ curr_aggregation_value0 ++ num_chunks_received);	// save data to register
+            reg.write(0, reg_val);	// Write updated values to register
             mark_to_drop(standard_metadata);
         }
+        debug.apply();
     }
-    debug.apply();
   }
 }
 
@@ -171,8 +175,7 @@ control TheChecksumComputation(inout headers hdr, inout metadata meta) {
 	      hdr.udp.srcPort,
 	      hdr.udp.dstPort,
 	      hdr.udp.hdr_length,
-	      hdr.sml.vector0,
-	      hdr.sml.vector1 },
+	      hdr.sml.vector },
 	    hdr.udp.checksum,
 	    HashAlgorithm.csum16
 	);
@@ -183,7 +186,7 @@ control TheChecksumComputation(inout headers hdr, inout metadata meta) {
 control TheDeparser(packet_out packet, in headers hdr) {
   apply {
     /* TODO: Implement me */
-    packet.emit(hdr.ethernet);
+    packet.emit(hdr.eth);
     packet.emit(hdr.ipv4);
     packet.emit(hdr.udp);
     packet.emit(hdr.sml);
