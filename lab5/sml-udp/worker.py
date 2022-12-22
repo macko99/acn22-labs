@@ -4,11 +4,10 @@ from lib.worker import *
 from lib.comm import send, receive
 from scapy.all import Packet, IntField, FieldListField
 import socket
-import struct
 
 NUM_ITER   = 4
 CHUNK_SIZE = 63
-TYPE_SML = 0x05FF
+PORT_SML   = 11037
 
 class SwitchML(Packet):
     name = "SwitchMLPacket"
@@ -27,16 +26,15 @@ def AllReduce(soc, rank, data, result):
     """
     for chunk_start in range(0, len(data), CHUNK_SIZE):
         pack = SwitchML(vector=data[chunk_start:chunk_start + CHUNK_SIZE])
-        send(soc, bytes(pack), ("10.0.2.15", 1))
+        send(soc, bytes(pack), ("10.0.2.15", PORT_SML))
         response = receive(soc, 42 + len(pack))[0]
-        result[chunk_start:chunk_start + CHUNK_SIZE] = [int.from_bytes(response_data[i:i+4], 'big') for i in range(0, len(response_load), 4)]
+        result[chunk_start:chunk_start + CHUNK_SIZE] = [int.from_bytes(response[i:i+4], 'big') for i in range(0, len(response), 4)]
 
 def main():
     rank = GetRankOrExit()
-    
-    # Create UDP Socket
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) #TODO we're still not marking our custom protocol ethertype, and instead just
-    s.bind(("10.0.2.255", 1))
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)	# Create UDP Socket
+    s.bind(("10.0.2.255", PORT_SML))
 
     Log("Started...")
     for i in range(NUM_ITER):

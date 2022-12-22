@@ -4,7 +4,7 @@
 typedef bit<9>  sw_port_t;   /*< Switch port */
 typedef bit<48> mac_addr_t;  /*< MAC address */
 
-#define TYPE_SML 0x05FF // ?? Arbitrary for now, to be decided later I guess
+#define TYPE_SML 0x05FF
 #define NUM_WORKERS 3
 #define CHUNK_SIZE 63
 
@@ -14,9 +14,9 @@ typedef bit<48> mac_addr_t;  /*< MAC address */
 #define NUM_CHUNKS_RECEIVED_INDICES 7:0
 
 header ethernet_t {
-    mac_addr_t dstAddr;
-    mac_addr_t srcAddr;
-    bit<16>   etherType;
+  mac_addr_t dstAddr;
+  mac_addr_t srcAddr;
+  bit<16>   etherType;
 }
 
 header sml_t {
@@ -56,35 +56,24 @@ control TheIngress(inout headers hdr,
                    inout metadata meta,
                    inout standard_metadata_t standard_metadata) {
 
-  table debug {
-    key = { hdr.eth.etherType : exact;
-            hdr.sml.vector : exact;
-            standard_metadata.mcast_grp : exact; }
-    actions = {}
-  }
-
   register<bit<(VECTOR_LENGTH_BITS + 8)>>(1) reg;
 
   apply {
     bit<(VECTOR_LENGTH_BITS + 8)> reg_val;
     @atomic {
-	//Read register
-    	reg.read(reg_val, 0);
+      reg.read(reg_val, 0);						//Read register
+									
+      reg_val[NUM_CHUNKS_RECEIVED_INDICES] = reg_val[NUM_CHUNKS_RECEIVED_INDICES] + 1;	//Update values in register
+      reg_val[VECTOR_INDICES] = reg_val[VECTOR_INDICES] + hdr.sml.vector;
 
-	//Update values in register
-    	reg_val[NUM_CHUNKS_RECEIVED_INDICES] = reg_val[NUM_CHUNKS_RECEIVED_INDICES] + 1;
-    	reg_val[VECTOR_INDICES] = reg_val[VECTOR_INDICES] + hdr.sml.vector;
-    	
-    	if (reg_val[NUM_CHUNKS_RECEIVED_INDICES] == NUM_WORKERS) {
-    	    //All work received: broadcast
-    	    hdr.sml.vector = reg_val[VECTOR_INDICES];
-    	    standard_metadata.mcast_grp = 1;
-    	    reg.write(0, 0);		// Clear register for reuse
-        } else {
-            reg.write(0, reg_val);	// Write updated values to register
-            mark_to_drop(standard_metadata);
-        }
-        debug.apply();
+      if (reg_val[NUM_CHUNKS_RECEIVED_INDICES] == NUM_WORKERS) {	// If all chunks received
+        hdr.sml.vector = reg_val[VECTOR_INDICES];			// Broadcast the aggregation results
+        standard_metadata.mcast_grp = 1;
+    	reg.write(0, 0);						// Clear register for reuse
+      } else {
+        reg.write(0, reg_val);					// Write updated values to register
+        mark_to_drop(standard_metadata);
+      }
     }
   }
 }

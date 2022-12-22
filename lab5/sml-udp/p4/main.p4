@@ -5,7 +5,7 @@ typedef bit<9>  sw_port_t;   /*< Switch port */
 typedef bit<48> mac_addr_t;  /*< MAC address */
 typedef bit<32> ip4_addr_t;  /*< IPv4 address */
 
-#define TYPE_SML 0x05FF // ?? Arbitrary for now, to be decided later I guess
+#define PORT_SML 11037
 #define NUM_WORKERS 3
 #define CHUNK_SIZE 63
 
@@ -81,9 +81,9 @@ parser TheParser(packet_in packet,
 
   state parse_udp {
     packet.extract(hdr.udp);
-    transition select(hdr.ipv4.dstAddr) {
-      0x0A00020f: parse_sml;	// TODO packets sent specifically to this switch are likely SML, but this isn't the best solution
-      default: accept;
+    transition select(hdr.udp.srcPort) {
+      PORT_SML: parse_sml;
+      // no default, non-SML packets are dropped
     }
   }
 
@@ -97,39 +97,31 @@ control TheIngress(inout headers hdr,
                    inout metadata meta,
                    inout standard_metadata_t standard_metadata) {
 
-  table debug {
-    key = { hdr.sml.vector : exact;
-            standard_metadata.mcast_grp : exact;
-            hdr.ipv4.protocol : exact;
-             }
-    actions = {}
-  }
-
   register<bit<(VECTOR_LENGTH_BITS + 8)>>(1) reg;
+
+  action broadcast(bit<(VECTOR_LENGTH_BITS + 8)> reg_val) {
+      hdr.sml.vector = reg_val[VECTOR_INDICES];
+      hdr.eth.dstAddr = 0xffffffffffff;
+      hdr.ipv4.dstAddr = 0x0A0002ff;
+      hdr.ipv4.srcAddr = 0x0A00020f;
+      standard_metadata.mcast_grp = 1;
+  }
 
   apply {
     bit<(VECTOR_LENGTH_BITS + 8)> reg_val;
     @atomic {
-	//Read register
-    	reg.read(reg_val, 0);
+    	reg.read(reg_val, 0);						//Read register
 
-	//Update values in register
-    	reg_val[NUM_CHUNKS_RECEIVED_INDICES] = reg_val[NUM_CHUNKS_RECEIVED_INDICES] + 1;
+    	reg_val[NUM_CHUNKS_RECEIVED_INDICES] = reg_val[NUM_CHUNKS_RECEIVED_INDICES] + 1;	//Update values in register
     	reg_val[VECTOR_INDICES] = reg_val[VECTOR_INDICES] + hdr.sml.vector;
-    	
-    	if (reg_val[NUM_CHUNKS_RECEIVED_INDICES] == NUM_WORKERS) {
-    	    //All work received: broadcast
-    	    hdr.sml.vector = reg_val[VECTOR_INDICES];
-    	    hdr.eth.dstAddr = 0xffffffffffff;
-    	    hdr.ipv4.dstAddr = 0x0A0002ff;
-    	    hdr.ipv4.srcAddr = 0x0A00020f;
-    	    standard_metadata.mcast_grp = 1;
-    	    reg.write(0, 0);		// Clear register for reuse
+
+    	if (reg_val[NUM_CHUNKS_RECEIVED_INDICES] == NUM_WORKERS) {	// If all work received
+    	    broadcast(reg_val);					// Broadcast results
+    	    reg.write(0, 0);						// Clear register for reuse
         } else {
-            reg.write(0, reg_val);	// Write updated values to register
+            reg.write(0, reg_val);					// Write updated values to register
             mark_to_drop(standard_metadata);
         }
-        debug.apply();
     }
   }
 }
@@ -185,7 +177,6 @@ control TheChecksumComputation(inout headers hdr, inout metadata meta) {
 
 control TheDeparser(packet_out packet, in headers hdr) {
   apply {
-    /* TODO: Implement me */
     packet.emit(hdr.eth);
     packet.emit(hdr.ipv4);
     packet.emit(hdr.udp);
